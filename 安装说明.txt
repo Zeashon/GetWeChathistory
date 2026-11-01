@@ -1,0 +1,49 @@
+GetWe 技能安装说明
+====================================
+
+【技能用途】
+GetWe（getwe）：微信 4.x（NT 架构）聊天记录解密提取。通过 DLL 注入 Hook 提取数据库密钥，
+用 koffi + WCDB API 读取 SQLCipher 加密数据库，输出标准 JSON。
+本技能只负责"取数"，人格分析/报告由配套的 WeMSG 技能完成（可选）。
+
+【目录结构】
+getwe/
+├── SKILL.md                    # 技能定义（触发词、工作流）
+├── assets/                     # 依赖 DLL
+│   ├── wx_key.dll              # 密钥提取注入 DLL
+│   ├── wcdb_api_patched.dll    # WCDB 读取 DLL（已修补，避开过期自毁）
+│   └── WCDB.dll
+├── references/wechat4x_tech.md # 技术参考（函数签名、表结构、坑位）
+└── scripts/
+    ├── extract_key.py          # 旧版密钥脚本（已废弃，勿用）
+    ├── extract_key_pid.py      # 密钥提取脚本（推荐）
+    ├── read_data.js            # 数据读取模块（koffi + WCDB）
+    ├── package.json
+    └── package-lock.json
+
+【安装到 TeleAgent】
+把 getwe/ 整个目录复制到本机技能的 getwe/ 目录下（与其它技能同级），
+并在 TeleAgent 中启用该技能即可。
+
+【依赖安装（目标设备必须）】
+1. 微信客户端：Weixin.exe 4.x（NT 架构），正在运行且已登录（3.x 不兼容）。
+2. Node.js 18+：
+   cd getwe/scripts && npm install koffi
+3. Python 3.9+：
+   pip install pandas matplotlib jieba wordcloud
+4. 密钥提取需管理员权限运行。
+
+【快速使用】
+1. 找到微信主进程 PID（父进程为 explorer.exe 且 MainWindowHandle≠0 的那个 Weixin.exe）。
+2. 管理员 PowerShell 运行：
+   python extract_key_pid.py <PID>   # 输出 64 位 hex 密钥
+3. 定位数据目录 xwechat_files/<账号id>_<suffix>/db_storage/（各盘浅层搜索）。
+4. 读取数据：
+   node read_data.js sessions <db_storage路径> <密钥>
+   node read_data.js extract-chat <db_storage路径> <密钥> <wxid>
+   node read_data.js search-contact <db_storage路径> <密钥> <关键词>
+
+【注意事项】
+- 全程本机处理，只读不改微信原始库，密钥不持久化。
+- 管理员权限仅在密钥提取步骤需要。
+- 详细技术参考见 references/wechat4x_tech.md。
